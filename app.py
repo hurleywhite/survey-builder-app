@@ -15,6 +15,22 @@ import streamlit as st
 st.set_page_config(page_title="Survey Builder", page_icon="📋", layout="wide")
 
 # ─── Load secrets ─────────────────────────────────────────────────────────────
+if "ANTHROPIC_API_KEY" not in st.secrets or "TYPEFORM_API_TOKEN" not in st.secrets:
+    st.error("Missing API keys. Go to your app settings on Streamlit Cloud:")
+    st.markdown("""
+1. Click **Manage app** (bottom-right corner)
+2. Click **Settings** → **Secrets**
+3. Paste the following (with your real keys):
+
+```toml
+ANTHROPIC_API_KEY = "sk-ant-your-key-here"
+TYPEFORM_API_TOKEN = "tfp_your-typeform-token-here"
+```
+
+4. Click **Save** — the app will reboot automatically.
+""")
+    st.stop()
+
 ANTHROPIC_API_KEY = st.secrets["ANTHROPIC_API_KEY"]
 TYPEFORM_API_TOKEN = st.secrets["TYPEFORM_API_TOKEN"]
 
