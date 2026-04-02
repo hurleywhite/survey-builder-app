@@ -11,6 +11,18 @@ import anthropic
 import requests
 import streamlit as st
 
+try:
+    import docx
+    HAS_DOCX = True
+except ImportError:
+    HAS_DOCX = False
+
+try:
+    import PyPDF2
+    HAS_PDF = True
+except ImportError:
+    HAS_PDF = False
+
 # ─── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Survey Builder", page_icon="📋", layout="wide")
 
@@ -380,12 +392,44 @@ if "deployed" not in st.session_state:
     st.session_state.deployed = None
 
 # Step 1: Input
-st.header("1. Paste Study Reference")
-study_doc = st.text_area(
-    "Study reference document",
-    height=400,
-    placeholder="Paste your full study reference here...\n\nSection 1: Eligibility\n\nAre you a U.S. resident?\nYes\nNo [Terminate]\n\n..."
-)
+st.header("1. Study Reference")
+
+tab_paste, tab_upload = st.tabs(["Paste Text", "Upload File"])
+
+with tab_paste:
+    pasted_doc = st.text_area(
+        "Study reference document",
+        height=400,
+        placeholder="Paste your full study reference here...\n\nSection 1: Eligibility\n\nAre you a U.S. resident?\nYes\nNo [Terminate]\n\n..."
+    )
+
+with tab_upload:
+    uploaded_file = st.file_uploader(
+        "Upload study reference (.txt, .docx, .pdf)",
+        type=["txt", "docx", "pdf"],
+    )
+
+# Resolve which input to use
+study_doc = ""
+if uploaded_file is not None:
+    if uploaded_file.name.endswith(".txt"):
+        study_doc = uploaded_file.read().decode("utf-8", errors="replace")
+    elif uploaded_file.name.endswith(".docx"):
+        if HAS_DOCX:
+            doc = docx.Document(uploaded_file)
+            study_doc = "\n".join(p.text for p in doc.paragraphs)
+        else:
+            st.error("python-docx not installed. Paste the text instead.")
+    elif uploaded_file.name.endswith(".pdf"):
+        if HAS_PDF:
+            reader = PyPDF2.PdfReader(uploaded_file)
+            study_doc = "\n".join(page.extract_text() or "" for page in reader.pages)
+        else:
+            st.error("PyPDF2 not installed. Paste the text instead.")
+    if study_doc:
+        st.success(f"Loaded {uploaded_file.name} ({len(study_doc)} characters)")
+elif pasted_doc:
+    study_doc = pasted_doc
 
 # Step 2: Generate
 if st.button("Generate Survey Payload", type="primary", disabled=not study_doc.strip()):
